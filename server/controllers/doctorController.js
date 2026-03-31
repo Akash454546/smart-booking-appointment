@@ -106,4 +106,12 @@ exports.getAvailableSlots = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch slots.', details: err.message });
   }
 };
+exports.createDoctor = async (req, res) => {
+  try {
+    const doctor = await Doctor.create(req.body);
+    res.status(201).json(doctor);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create doctor.', details: err.message });
+  }
+};
 
