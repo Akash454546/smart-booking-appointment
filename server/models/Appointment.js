@@ -13,10 +13,10 @@ const appointmentSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Compound index to prevent double bookings
+// Compound index to prevent double bookings - unique only for upcoming appointments
 appointmentSchema.index(
   { doctorId: 1, date: 1, timeSlot: 1 },
-  { unique: true, partialFilterExpression: { status: { $ne: 'cancelled' } } }
+  { unique: true, partialFilterExpression: { status: 'upcoming' } }
 );
 
 module.exports = mongoose.model('Appointment', appointmentSchema);
