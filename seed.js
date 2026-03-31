@@ -83,4 +83,25 @@ async function seed() {
     const inserted = await Doctor.insertMany(doctors);
     console.log(`Inserted ${inserted.length} doctors`);
 
+    // Create a demo patient account
+    const existingUser = await User.findOne({ email: 'patient@demo.com' });
+    if (!existingUser) {
+      await User.create({
+        name: 'Demo Patient',
+        email: 'patient@demo.com',
+        phone: '1234567890',
+        passwordHash: 'password123',
+        role: 'patient'
+      });
+      console.log('Created demo patient (patient@demo.com / password123)');
+    }
 
+    console.log('\nSeed complete!');
+    process.exit(0);
+  } catch (err) {
+    console.error('Seed error:', err);
+    process.exit(1);
+  }
+}
+
+seed();
