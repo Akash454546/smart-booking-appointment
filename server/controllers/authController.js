@@ -29,32 +29,3 @@ exports.register = async (req, res) => {
   }
 };
 
-exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ error: 'Invalid email or password.' });
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) return res.status(401).json({ error: 'Invalid email or password.' });
-
-    const token = generateToken(user);
-    res.json({
-      token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role }
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Login failed.', details: err.message });
-  }
-};
-
-exports.getProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select('-passwordHash');
-    if (!user) return res.status(404).json({ error: 'User not found.' });
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch profile.' });
-  }
-};
