@@ -34,31 +34,29 @@ exports.bookAppointment = async (req, res) => {
       }
     }
 
-    // Conflict check: ensure no active booking on same doctor/date/slot
-    const conflict = await Appointment.findOne({
-      doctorId,
-      date,
-      timeSlot,
-      status: { $ne: 'cancelled' }
-    });
-    if (conflict) {
-      return res.status(409).json({ error: 'This time slot is already booked.' });
+    // Try to create appointment (unique index on db will prevent double bookings atomically)
+    let appointment;
+    try {
+      appointment = await Appointment.create({
+        doctorId,
+        patientId,
+        date,
+        timeSlot,
+        status: 'upcoming'
+      });
+    } catch (createErr) {
+      // Duplicate key error means slot already booked
+      if (createErr.code === 11000) {
+        return res.status(409).json({ error: 'This time slot is already booked.' });
+      }
+      throw createErr;
     }
 
-    const appointment = await Appointment.create({
-      doctorId,
-      patientId,
-      date,
-      timeSlot,
-      status: 'upcoming'
-    });
-
+    // Populate doctor info before returning
+    await appointment.populate('doctorId', 'name specialization');
     res.status(201).json(appointment);
   } catch (err) {
-    // Handle MongoDB duplicate key error as double-booking
-    if (err.code === 11000) {
-      return res.status(409).json({ error: 'This time slot is already booked.' });
-    }
+    console.error('Booking error:', err.message);
     res.status(500).json({ error: 'Booking failed.', details: err.message });
   }
 };
@@ -109,18 +107,25 @@ exports.rescheduleAppointment = async (req, res) => {
       doctorId: appointment.doctorId,
       date,
       timeSlot,
-      status: { $ne: 'cancelled' }
+      status: { $ne: 'cancelled' },
+      _id: { $ne: appointment._id } // Exclude current appointment
     });
     if (conflict) {
       return res.status(409).json({ error: 'New time slot is already booked.' });
     }
 
+    // Update appointment
     appointment.date = date;
     appointment.timeSlot = timeSlot;
     await appointment.save();
 
+    // Populate doctor info before returning
+    await appointment.populate('doctorId', 'name specialization');
     res.json({ message: 'Appointment rescheduled.', appointment });
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ error: 'New time slot is already booked.' });
+    }
     res.status(500).json({ error: 'Reschedule failed.', details: err.message });
   }
 };
